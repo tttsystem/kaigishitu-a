@@ -13,6 +13,7 @@ const NotionBookingSystem = () => {
   
   // Notionからカレンダーデータを取得
   const [notionEvents, setNotionEvents] = useState([]);
+  const [holidays, setHolidays] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // システム設定（コードで直接変更）
@@ -23,18 +24,10 @@ const NotionBookingSystem = () => {
     description: '使用する時間帯を選択してご予約ください'
   };
 
-  // 祝日リスト（2025年の日本の祝日）
-  const holidays2025 = [
-    '2025-01-01', '2025-01-13', '2025-02-11', '2025-02-23',
-    '2025-03-20', '2025-04-29', '2025-05-03', '2025-05-04',
-    '2025-05-05', '2025-07-21', '2025-08-11', '2025-09-15',
-    '2025-09-23', '2025-10-13', '2025-11-03', '2025-11-23',
-  ];
-
   // Notion API設定
   const CALENDAR_DATABASE_ID = process.env.REACT_APP_NOTION_DATABASE_ID || '1f344ae2d2c780d5be3ffd5c8132f5f6';
 
-  // 7日間の日付を生成
+  // 平日5日間の日付を生成（土日を除外）
   const getCurrentWeekDates = () => {
     const today = new Date();
     const currentDay = today.getDay();
@@ -42,7 +35,8 @@ const NotionBookingSystem = () => {
     monday.setDate(today.getDate() - currentDay + 1 + (weekOffset * 7));
     
     const weekDates = [];
-    for (let i = 0; i < 7; i++) {
+    // 月曜日から金曜日のみ（5日間）
+    for (let i = 0; i < 5; i++) {
       const date = new Date(monday);
       date.setDate(monday.getDate() + i);
       weekDates.push(date);
@@ -50,17 +44,31 @@ const NotionBookingSystem = () => {
     return weekDates;
   };
 
-  // 祝日かどうかをチェック（土日含む）
-  const isHoliday = (date) => {
-    const dateString = date.toISOString().split('T')[0];
-    const dayOfWeek = date.getDay();
-    return holidays2025.includes(dateString) || dayOfWeek === 0 || dayOfWeek === 6;
+  // 祝日APIから祝日データを取得
+  const fetchHolidays = async (year) => {
+    try {
+      const response = await fetch(`https://holidays-jp.github.io/api/v1/${year}/date.json`);
+      if (!response.ok) {
+        throw new Error('祝日APIエラー');
+      }
+      const data = await response.json();
+      return Object.keys(data); // 日付文字列の配列を返す
+    } catch (error) {
+      console.error('祝日取得エラー:', error);
+      // フォールバック：2025年の祝日（API失敗時用）
+      return [
+        '2025-01-01', '2025-01-13', '2025-02-11', '2025-02-23',
+        '2025-03-20', '2025-04-29', '2025-05-03', '2025-05-04',
+        '2025-05-05', '2025-07-21', '2025-08-11', '2025-09-15',
+        '2025-09-23', '2025-10-13', '2025-11-03', '2025-11-23',
+      ];
+    }
   };
 
-  // 祝日のみチェック（土日は除外）
-  const isActualHoliday = (date) => {
+  // 祝日のみチェック（土日は除外済み）
+  const isHoliday = (date) => {
     const dateString = date.toISOString().split('T')[0];
-    return holidays2025.includes(dateString);
+    return holidays.includes(dateString);
   };
 
   // 時間オプションを生成（30分刻み）
@@ -95,7 +103,7 @@ const NotionBookingSystem = () => {
             property: '日付',
             date: {
               on_or_after: weekDates[0].toISOString().split('T')[0],
-              on_or_before: weekDates[6].toISOString().split('T')[0]
+              on_or_before: weekDates[4].toISOString().split('T')[0]
             }
           }
         })
@@ -163,9 +171,24 @@ const NotionBookingSystem = () => {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (weekDates && weekDates.length > 0) {
-      fetchNotionCalendar();
-    }
+    const loadData = async () => {
+      if (weekDates && weekDates.length > 0) {
+        // 表示中の週の年を取得（複数年にまたがる可能性を考慮）
+        const years = [...new Set(weekDates.map(date => date.getFullYear()))];
+        
+        // 各年の祝日を取得
+        const allHolidays = [];
+        for (const year of years) {
+          const yearHolidays = await fetchHolidays(year);
+          allHolidays.push(...yearHolidays);
+        }
+        
+        setHolidays(allHolidays);
+        await fetchNotionCalendar();
+      }
+    };
+    
+    loadData();
   }, [weekOffset]);
 
   // 時間の競合チェック
@@ -317,11 +340,7 @@ const NotionBookingSystem = () => {
 
   const getDateStatusText = (date) => {
     const status = getDateStatus(date);
-    if (isHoliday(date)) {
-      const dayOfWeek = date.getDay();
-      if (dayOfWeek === 0 || dayOfWeek === 6) return '×';  // 土日は×のみ
-      if (isActualHoliday(date)) return '祝日';  // 祝日は「祝日」表示
-    }
+    if (isHoliday(date)) return '祝日';
     switch (status) {
       case 'full': return '×';
       case 'few': return '△';
@@ -337,13 +356,7 @@ const NotionBookingSystem = () => {
     if (isSelected) return 'bg-blue-500 text-white border-blue-500';
     
     if (isHoliday(date)) {
-      const dayOfWeek = date.getDay();
-      if (dayOfWeek === 0 || dayOfWeek === 6) {
-        return 'bg-gray-200 text-gray-500 border-gray-300';
-      }
-      if (isActualHoliday(date)) {
-        return 'bg-red-100 text-red-600 border-red-200';
-      }
+      return 'bg-red-100 text-red-600 border-red-200';
     }
     
     switch (status) {
@@ -378,7 +391,7 @@ const NotionBookingSystem = () => {
                   ← 前週
                 </button>
                 <span className="font-bold text-gray-800">
-                  {weekDates && weekDates.length > 0 ? `${formatDate(weekDates[0])} - ${formatDate(weekDates[6])}` : '読み込み中...'}
+                  {weekDates && weekDates.length > 0 ? `${formatDate(weekDates[0])} - ${formatDate(weekDates[4])}` : '読み込み中...'}
                 </span>
                 <button 
                   onClick={() => setWeekOffset(weekOffset + 1)}
