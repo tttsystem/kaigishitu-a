@@ -88,7 +88,7 @@ const NotionBookingSystem = () => {
         body: JSON.stringify({
           databaseId: CALENDAR_DATABASE_ID,
           filter: {
-            property: '予定日',
+            property: '日付',
             date: {
               on_or_after: weekDates[0].toISOString().split('T')[0],
               on_or_before: weekDates[6].toISOString().split('T')[0]
@@ -123,7 +123,7 @@ const NotionBookingSystem = () => {
         body: JSON.stringify({
           parent: { database_id: CALENDAR_DATABASE_ID },
           properties: {
-            '名前': {
+          '予定名': {
               title: [
                 {
                   text: {
@@ -131,14 +131,14 @@ const NotionBookingSystem = () => {
                   }
                 }
               ]
-            },
-            '予定日': {
-              date: {
-                start: `${bookingData.date}T${bookingData.startTime}:00+09:00`,
-                end: `${bookingData.date}T${bookingData.endTime}:00+09:00`
-              }
-            }
-          }
+              },
+  '日付': {
+    date: {
+      start: `${bookingData.date}T${bookingData.startTime}:00+09:00`,
+      end: `${bookingData.date}T${bookingData.endTime}:00+09:00`
+    }
+  }
+}
         })
       });
 
@@ -172,8 +172,8 @@ const NotionBookingSystem = () => {
     const targetEnd = new Date(`${date.toISOString().split('T')[0]}T${endTime}:00`);
 
     return notionEvents.some(event => {
-      const eventStart = event.properties['予定日']?.date?.start;
-      const eventEnd = event.properties['予定日']?.date?.end;
+      const eventStart = event.properties['日付']?.date?.start;
+      const eventEnd = event.properties['日付']?.date?.end;
       
       if (!eventStart || !eventEnd) return false;
       
@@ -264,7 +264,7 @@ const NotionBookingSystem = () => {
     
     // その日に何かしらの予約があるかチェック
     const hasBookings = notionEvents.some(event => {
-      const eventStart = event.properties['予定日']?.date?.start;
+      const eventStart = event.properties['日付']?.date?.start;
       if (!eventStart) return false;
       
       const eventDate = new Date(eventStart);
