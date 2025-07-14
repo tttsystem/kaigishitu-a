@@ -179,11 +179,12 @@ const NotionBookingSystem = () => {
   };
 
   // コンポーネント読み込み時と週変更時にNotionカレンダーを取得
-  useEffect(() => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+useEffect(() => {
   if (weekDates && weekDates.length > 0) {
     fetchNotionCalendar();
   }
-  }, [weekOffset]);
+}, [weekOffset]);
 
   // Notionのイベントと照合して予約状況を確認
   const getBookingStatus = (date, time) => {
