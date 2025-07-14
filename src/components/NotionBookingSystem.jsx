@@ -15,7 +15,7 @@ const NotionBookingSystem = () => {
 
   // システム設定（コードで直接変更）
   const settings = {
-    immediateButtonText: '会議室を予約する',
+    immediateButtonText: '会議室Aを予約する',
     startHour: 10,
     endHour: 23,
     systemTitle: '会議室A 予約システム',
@@ -31,7 +31,7 @@ const NotionBookingSystem = () => {
   ];
 
   // Notion API設定
-  const CALENDAR_DATABASE_ID = process.env.REACT_APP_NOTION_DATABASE_ID || '1fa44ae2d2c780a5b27dc7aae5bae1aa';
+  const CALENDAR_DATABASE_ID = process.env.REACT_APP_NOTION_DATABASE_ID || '1f344ae2d2c780d5be3ffd5c8132f5f6';
 
   // 平日のみの週の日付を生成（土日を除外）
   const getCurrentWeekDates = () => {
@@ -91,7 +91,7 @@ const NotionBookingSystem = () => {
             property: '予定日',
             date: {
               on_or_after: weekDates[0].toISOString().split('T')[0],
-              on_or_before: weekDates[4].toISOString().split('T')[0]
+              on_or_before: weekDates[6].toISOString().split('T')[0]
             }
           }
         })
@@ -306,7 +306,7 @@ const NotionBookingSystem = () => {
           ← 前週
         </button>
         <span className="font-semibold text-lg">
-          {weekDates && weekDates.length > 0 ? `${formatDate(weekDates[0])} - ${formatDate(weekDates[4])}` : '読み込み中...'}
+          {weekDates && weekDates.length > 0 ? `${formatDate(weekDates[0])} - ${formatDate(weekDates[6])}` : '読み込み中...'}
         </span>
         <button 
           onClick={() => setWeekOffset(weekOffset + 1)}
