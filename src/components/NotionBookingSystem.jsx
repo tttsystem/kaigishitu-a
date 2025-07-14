@@ -42,7 +42,6 @@ const NotionBookingSystem = () => {
   ];
 
   // Notion API設定
-  const NOTION_TOKEN = process.env.REACT_APP_NOTION_TOKEN || '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';
   const CALENDAR_DATABASE_ID = process.env.REACT_APP_NOTION_DATABASE_ID || '1fa44ae2d2c780a5b27dc7aae5bae1aa';
 
   // 平日のみの週の日付を生成（土日を除外）
@@ -181,9 +180,9 @@ const NotionBookingSystem = () => {
 
   // コンポーネント読み込み時と週変更時にNotionカレンダーを取得
   useEffect(() => {
-    if (weekDates && weekDates.length > 0) {
-      fetchNotionCalendar();
-    }
+  if (weekDates && weekDates.length > 0) {
+    fetchNotionCalendar();
+  }
   }, [weekOffset]);
 
   // Notionのイベントと照合して予約状況を確認
