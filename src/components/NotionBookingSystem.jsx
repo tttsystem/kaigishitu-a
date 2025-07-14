@@ -329,24 +329,42 @@ const NotionBookingSystem = () => {
   const getDateStatus = (date) => {
     if (isHoliday(date)) return 'holiday';
     
-    const availableSlots = timeOptions.filter(time => 
-      getSlotStatus(date, time) === 'available'
-    ).length;
+    // 時間帯別の空き状況をチェック
+    const morningSlots = timeOptions.filter(time => {
+      const hour = parseInt(time.split(':')[0]);
+      return hour < 13;
+    });
     
-    if (availableSlots === 0) return 'full';
-    if (availableSlots <= 3) return 'few';
-    return 'available';
+    const afternoonSlots = timeOptions.filter(time => {
+      const hour = parseInt(time.split(':')[0]);
+      return hour >= 13 && hour < 18;
+    });
+    
+    const eveningSlots = timeOptions.filter(time => {
+      const hour = parseInt(time.split(':')[0]);
+      return hour >= 18;
+    });
+    
+    const morningAvailable = morningSlots.some(time => getSlotStatus(date, time) === 'available');
+    const afternoonAvailable = afternoonSlots.some(time => getSlotStatus(date, time) === 'available');
+    const eveningAvailable = eveningSlots.some(time => getSlotStatus(date, time) === 'available');
+    
+    return {
+      morning: morningAvailable,
+      afternoon: afternoonAvailable,
+      evening: eveningAvailable,
+      hasAnyAvailable: morningAvailable || afternoonAvailable || eveningAvailable
+    };
   };
 
   const getDateStatusText = (date) => {
     const status = getDateStatus(date);
     if (isHoliday(date)) return '祝日';
-    switch (status) {
-      case 'full': return '×';
-      case 'few': return '△';
-      case 'available': return '○';
-      default: return '○';
+    if (typeof status === 'object') {
+      if (!status.hasAnyAvailable) return '×';
+      return '○';
     }
+    return '○';
   };
 
   const getDateColor = (date) => {
@@ -359,12 +377,14 @@ const NotionBookingSystem = () => {
       return 'bg-red-100 text-red-600 border-red-200';
     }
     
-    switch (status) {
-      case 'full': return 'bg-red-50 text-red-600 border-red-200';
-      case 'few': return 'bg-orange-50 text-orange-600 border-orange-200';
-      case 'available': return 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100';
-      default: return 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100';
+    if (typeof status === 'object') {
+      if (!status.hasAnyAvailable) {
+        return 'bg-red-50 text-red-600 border-red-200';
+      }
+      return 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100';
     }
+    
+    return 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100';
   };
 
   return (
@@ -403,14 +423,10 @@ const NotionBookingSystem = () => {
 
               {/* 凡例 */}
               <div className="bg-white rounded-lg shadow-sm border p-3 mb-4">
-                <div className="grid grid-cols-4 gap-2 text-xs">
+                <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="flex items-center">
                     <span className="w-4 h-4 bg-green-50 border border-green-200 rounded mr-1"></span>
                     <span className="text-gray-600">○ 空あり</span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="w-4 h-4 bg-orange-50 border border-orange-200 rounded mr-1"></span>
-                    <span className="text-gray-600">△ 残少</span>
                   </div>
                   <div className="flex items-center">
                     <span className="w-4 h-4 bg-red-50 border border-red-200 rounded mr-1"></span>
@@ -430,8 +446,8 @@ const NotionBookingSystem = () => {
                   <button
                     key={index}
                     onClick={() => handleDateSelect(date)}
-                    disabled={isHoliday(date) || getDateStatus(date) === 'full'}
-                    className={`w-full p-4 rounded-lg border-2 transition-all text-left ${getDateColor(date)} ${isHoliday(date) || getDateStatus(date) === 'full' ? 'cursor-not-allowed' : 'cursor-pointer active:scale-95'}`}
+                    disabled={isHoliday(date) || (typeof getDateStatus(date) === 'object' && !getDateStatus(date).hasAnyAvailable)}
+                    className={`w-full p-4 rounded-lg border-2 transition-all text-left ${getDateColor(date)} ${isHoliday(date) || (typeof getDateStatus(date) === 'object' && !getDateStatus(date).hasAnyAvailable) ? 'cursor-not-allowed' : 'cursor-pointer active:scale-95'}`}
                   >
                     <div className="flex justify-between items-center">
                       <div>
@@ -441,6 +457,29 @@ const NotionBookingSystem = () => {
                         <div className="text-sm opacity-75">
                           {formatFullDate(date)}
                         </div>
+                        {/* 時間帯別空き状況 */}
+                        {!isHoliday(date) && typeof getDateStatus(date) === 'object' && (
+                          <div className="text-xs mt-1 space-y-0.5">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-gray-500">午前中:</span>
+                              <span className={getDateStatus(date).morning ? 'text-green-600' : 'text-red-500'}>
+                                {getDateStatus(date).morning ? 'あり' : 'なし'}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-gray-500">午後:</span>
+                              <span className={getDateStatus(date).afternoon ? 'text-green-600' : 'text-red-500'}>
+                                {getDateStatus(date).afternoon ? 'あり' : 'なし'}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-gray-500">夕方:</span>
+                              <span className={getDateStatus(date).evening ? 'text-green-600' : 'text-red-500'}>
+                                {getDateStatus(date).evening ? 'あり' : 'なし'}
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                       <div className="text-2xl font-bold">
                         {getDateStatusText(date)}
